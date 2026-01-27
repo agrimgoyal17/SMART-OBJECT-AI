@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Object Scanner - Smart Object AI</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!-- Top Navigation -->
+    <nav class="dashboard-nav">
+        <div class="container">
+            <div class="nav-brand">
+                <h2>🤖 Smart Object AI</h2>
+            </div>
+            <div class="nav-user">
+                <span id="userName">User</span>
+                <button id="logoutBtn" class="btn-outline">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li class="active"><a href="scanner.html">📸 Object Scanner</a></li>
+                <li><a href="history.html">📜 History</a></li>
+                <li><a href="settings.html">⚙️ Settings</a></li>
+                <li><a href="about.html">ℹ️ About</a></li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <div class="scanner-container">
+                <h1>🔍 Smart Object Scanner</h1>
+                <p class="scanner-subtitle">Point your camera at any object to make it smart</p>
+
+                <!-- Scanner Interface -->
+                <div class="scanner-box">
+                    <!-- Step 1: Image Capture -->
+                    <div id="captureStep" class="scanner-step active">
+                        <h2>📸 Step 1: Capture Object</h2>
+                        <div class="capture-area">
+                            <div id="cameraPreview" class="camera-preview">
+                                <video id="video" autoplay playsinline></video>
+                                <canvas id="canvas" style="display:none;"></canvas>
+                            </div>
+                            <div id="imagePreview" class="image-preview" style="display:none;">
+                                <img id="capturedImage" alt="Captured object">
+                            </div>
+                        </div>
+                        <div class="capture-buttons">
+                            <button id="startCameraBtn" class="btn-primary">📷 Open Camera</button>
+                            <button id="captureBtn" class="btn-primary" style="display:none;">📸 Capture</button>
+                            <input type="file" id="uploadInput" accept="image/*" style="display:none;">
+                            <button id="uploadBtn" class="btn-outline">📁 Upload Image</button>
+                            <button id="retakeBtn" class="btn-outline" style="display:none;">🔄 Retake</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Object Recognition -->
+                    <div id="recognitionStep" class="scanner-step">
+                        <h2>🧠 Step 2: Object Detected</h2>
+                        <div class="recognition-result">
+                            <div class="detected-object">
+                                <img id="detectedImage" alt="Detected object">
+                            </div>
+                            <div class="object-info">
+                                <h3 id="objectName">Identifying...</h3>
+                                <p id="objectType">Type: Unknown</p>
+                                <div class="confidence-bar">
+                                    <div class="confidence-label">Confidence:</div>
+                                    <div class="confidence-track">
+                                        <div id="confidenceBar" class="confidence-fill"></div>
+                                    </div>
+                                    <span id="confidenceText">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="proceedBtn" class="btn-primary">Continue ✨</button>
+                    </div>
+
+                    <!-- Step 3: Voice Command -->
+                    <div id="commandStep" class="scanner-step">
+                        <h2>🎤 Step 3: Voice Command</h2>
+                        <div class="voice-interface">
+                            <div class="microphone-container">
+                                <button id="micBtn" class="mic-button">
+                                    <span class="mic-icon">🎤</span>
+                                </button>
+                                <p id="micStatus">Click microphone to speak</p>
+                            </div>
+                            <div id="voiceText" class="voice-text"></div>
+
+                            <div class="suggested-commands">
+                                <p>💡 Suggested Commands:</p>
+                                <div id="commandSuggestions" class="command-chips"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Action Result -->
+                    <div id="resultStep" class="scanner-step">
+                        <h2>✨ Step 4: Action Executed</h2>
+                        <div class="action-result">
+                            <div id="actionAnimation" class="action-animation"></div>
+                            <div class="action-details">
+                                <h3 id="actionTitle">Action Completed</h3>
+                                <p id="actionDescription">Your command has been executed</p>
+                                <div id="actionStatus" class="action-status"></div>
+                            </div>
+                        </div>
+                        <div class="result-buttons">
+                            <button id="newCommandBtn" class="btn-outline">🎤 New Command</button>
+                            <button id="newScanBtn" class="btn-primary">📸 Scan New Object</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action History -->
+                <div class="action-history">
+                    <h3>Recent Actions</h3>
+                    <div id="actionHistoryList" class="history-list">
+                        <p class="empty-state">No actions yet</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- TensorFlow.js & Coco-SSD -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/scanner.js"></script>
+    <script src="js/main.js"></script>
+
+    <script>
+        // Check authentication
+        checkAuth();
+
+        // Load user name
+        async function loadUser() {
+            const user = await getCurrentUser();
+            if (user) {
+                document.getElementById('userName').textContent = user.user_metadata?.full_name || user.email;
+            }
+        }
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            const result = await logout();
+            if (result.success) {
+                window.location.href = 'index.html';
+            }
+        });
+
+        loadUser();
+    </script>
+</body>
+
+</html>

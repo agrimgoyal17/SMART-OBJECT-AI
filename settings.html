@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Smart Object AI</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Top Navigation -->
+    <nav class="dashboard-nav">
+        <div class="container">
+            <div class="nav-brand">
+                <h2>🤖 Smart Object AI</h2>
+            </div>
+            <div class="nav-user">
+                <span id="userName">User</span>
+                <button id="logoutBtn" class="btn-outline">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="scanner.html">📸 Object Scanner</a></li>
+                <li><a href="history.html">📜 History</a></li>
+                <li class="active"><a href="settings.html">⚙️ Settings</a></li>
+                <li><a href="about.html">ℹ️ About</a></li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <div class="settings-container">
+                <h1>⚙️ Settings</h1>
+                <p class="settings-subtitle">Manage your account and preferences</p>
+
+                <!-- Profile Settings -->
+                <div class="settings-section">
+                    <h2>👤 Profile Information</h2>
+                    <div class="settings-card">
+                        <div class="form-group">
+                            <label for="profileName">Full Name</label>
+                            <input type="text" id="profileName" placeholder="Your name">
+                        </div>
+                        <div class="form-group">
+                            <label for="profileEmail">Email Address</label>
+                            <input type="email" id="profileEmail" placeholder="your.email@example.com" disabled>
+                            <small>Email cannot be changed</small>
+                        </div>
+                        <button id="saveProfileBtn" class="btn-primary">Save Changes</button>
+                    </div>
+                </div>
+
+                <!-- App Preferences -->
+                <div class="settings-section">
+                    <h2>🎨 App Preferences</h2>
+                    <div class="settings-card">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Theme</h3>
+                                <p>Choose your preferred color theme</p>
+                            </div>
+                            <select id="themeSelect" class="setting-select">
+                                <option value="light">Light Mode</option>
+                                <option value="dark">Dark Mode</option>
+                                <option value="auto">Auto (System)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Notifications</h3>
+                                <p>Enable browser notifications</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="notificationsToggle">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Voice Feedback</h3>
+                                <p>Audio confirmation for voice commands</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="voiceFeedbackToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Auto-save Scans</h3>
+                                <p>Automatically save scanned objects</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="autoSaveToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Privacy & Security -->
+                <div class="settings-section">
+                    <h2>🔒 Privacy & Security</h2>
+                    <div class="settings-card">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Change Password</h3>
+                                <p>Update your account password</p>
+                            </div>
+                            <button id="changePasswordBtn" class="btn-outline">Change Password</button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Data Export</h3>
+                                <p>Download all your data</p>
+                            </div>
+                            <button id="exportDataBtn" class="btn-outline">Export Data</button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h3>Delete Account</h3>
+                                <p>Permanently delete your account and data</p>
+                            </div>
+                            <button id="deleteAccountBtn" class="btn-danger">Delete Account</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- About App -->
+                <div class="settings-section">
+                    <h2>ℹ️ About</h2>
+                    <div class="settings-card">
+                        <div class="about-info">
+                            <p><strong>Smart Object AI</strong></p>
+                            <p>Version 1.0.0</p>
+                            <p>Team BODMAS - Anand Engineering College</p>
+                            <p>© 2025 All rights reserved</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    
+    <script>
+        // Check authentication
+        checkAuth();
+        
+        // Load user settings
+        async function loadSettings() {
+            const user = await getCurrentUser();
+            if (user) {
+                document.getElementById('userName').textContent = user.user_metadata?.full_name || user.email;
+                document.getElementById('profileName').value = user.user_metadata?.full_name || '';
+                document.getElementById('profileEmail').value = user.email;
+                
+                // Load preferences from localStorage
+                loadPreferences();
+            }
+        }
+        
+        function loadPreferences() {
+            const theme = localStorage.getItem('theme') || 'light';
+            const notifications = localStorage.getItem('notifications') === 'true';
+            const voiceFeedback = localStorage.getItem('voiceFeedback') !== 'false';
+            const autoSave = localStorage.getItem('autoSave') !== 'false';
+            
+            document.getElementById('themeSelect').value = theme;
+            document.getElementById('notificationsToggle').checked = notifications;
+            document.getElementById('voiceFeedbackToggle').checked = voiceFeedback;
+            document.getElementById('autoSaveToggle').checked = autoSave;
+        }
+        
+        // Save profile
+        document.getElementById('saveProfileBtn').addEventListener('click', async () => {
+            const name = document.getElementById('profileName').value.trim();
+            
+            if (!name) {
+                alert('Please enter your name');
+                return;
+            }
+            
+            const result = await updateProfile({ full_name: name });
+            if (result.success) {
+                alert('Profile updated successfully!');
+            } else {
+                alert('Error updating profile: ' + result.error);
+            }
+        });
+        
+        // Theme change
+        document.getElementById('themeSelect').addEventListener('change', (e) => {
+            localStorage.setItem('theme', e.target.value);
+            if (window.applyTheme) window.applyTheme();
+            alert('Theme preference saved!');
+        });
+        
+        // Toggle settings
+        document.getElementById('notificationsToggle').addEventListener('change', (e) => {
+            localStorage.setItem('notifications', e.target.checked);
+        });
+        
+        document.getElementById('voiceFeedbackToggle').addEventListener('change', (e) => {
+            localStorage.setItem('voiceFeedback', e.target.checked);
+        });
+        
+        document.getElementById('autoSaveToggle').addEventListener('change', (e) => {
+            localStorage.setItem('autoSave', e.target.checked);
+        });
+        
+        // Change password
+        document.getElementById('changePasswordBtn').addEventListener('click', () => {
+            alert('Password change feature coming soon!');
+        });
+        
+        // Export data
+        document.getElementById('exportDataBtn').addEventListener('click', async () => {
+            alert('Data export feature coming soon!');
+        });
+        
+        // Delete account
+        document.getElementById('deleteAccountBtn').addEventListener('click', () => {
+            if (confirm('Are you sure you want to delete your account? This action cannot be undone!')) {
+                if (confirm('This will permanently delete all your data. Continue?')) {
+                    alert('Account deletion feature coming soon!');
+                }
+            }
+        });
+        
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            const result = await logout();
+            if (result.success) {
+                window.location.href = 'index.html';
+            }
+        });
+        
+        // Load settings on page load
+        loadSettings();
+    </script>
+</body>
+</html>

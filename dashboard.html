@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Smart Object AI</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Top Navigation -->
+    <nav class="dashboard-nav">
+        <div class="container">
+            <div class="nav-brand">
+                <h2>🤖 Smart Object AI</h2>
+            </div>
+            <div class="nav-user">
+                <span id="userName">Loading...</span>
+                <button id="logoutBtn" class="btn-outline">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <ul class="sidebar-menu">
+                <li class="active"><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="scanner.html">📸 Object Scanner</a></li>
+                <li><a href="history.html">📜 History</a></li>
+                <li><a href="settings.html">⚙️ Settings</a></li>
+                <li><a href="about.html">ℹ️ About</a></li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <div class="dashboard-header">
+                <h1>Welcome to Your Dashboard</h1>
+                <p>Start scanning objects and making them smart!</p>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📸</div>
+                    <div class="stat-info">
+                        <h3 id="totalScans">0</h3>
+                        <p>Objects Scanned</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🎤</div>
+                    <div class="stat-info">
+                        <h3 id="totalCommands">0</h3>
+                        <p>Voice Commands</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-info">
+                        <h3 id="totalActions">0</h3>
+                        <p>Actions Executed</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🕒</div>
+                    <div class="stat-info">
+                        <h3 id="lastActive">Just now</h3>
+                        <p>Last Active</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <h2>Quick Actions</h2>
+                <div class="action-buttons">
+                    <a href="scanner.html" class="action-btn">
+                        <span class="action-icon">📸</span>
+                        <span class="action-text">Scan New Object</span>
+                    </a>
+                    <a href="history.html" class="action-btn">
+                        <span class="action-icon">📜</span>
+                        <span class="action-text">View History</span>
+                    </a>
+                    <a href="settings.html" class="action-btn">
+                        <span class="action-icon">⚙️</span>
+                        <span class="action-text">Settings</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="recent-activity">
+                <h2>Recent Activity</h2>
+                <div id="recentActivityList" class="activity-list">
+                    <p class="empty-state">No recent activity. Start scanning objects!</p>
+                </div>
+            </div>
+
+            <!-- Getting Started Guide -->
+            <div class="guide-section">
+                <h2>Getting Started</h2>
+                <div class="guide-steps">
+                    <div class="guide-step">
+                        <div class="guide-number">1</div>
+                        <div class="guide-content">
+                            <h3>Scan an Object</h3>
+                            <p>Click "Scan New Object" to capture any physical object with your camera</p>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <div class="guide-number">2</div>
+                        <div class="guide-content">
+                            <h3>AI Recognition</h3>
+                            <p>Our AI will automatically identify the object</p>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <div class="guide-number">3</div>
+                        <div class="guide-content">
+                            <h3>Voice Command</h3>
+                            <p>Give voice commands to interact with the object</p>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <div class="guide-number">4</div>
+                        <div class="guide-content">
+                            <h3>See Results</h3>
+                            <p>View visual feedback and digital actions in real-time</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    
+    <script>
+        // Check if user is logged in
+        checkAuth();
+        
+        // Load user data
+        async function loadDashboard() {
+            const user = await getCurrentUser();
+            if (user) {
+                document.getElementById('userName').textContent = user.user_metadata?.full_name || user.email;
+                loadStats();
+                loadRecentActivity();
+            }
+        }
+        
+        // Load statistics
+        async function loadStats() {
+            try {
+                const stats = await getStats();
+                document.getElementById('totalScans').textContent = stats.scans || 0;
+                document.getElementById('totalCommands').textContent = stats.commands || 0;
+                document.getElementById('totalActions').textContent = stats.actions || 0;
+            } catch (error) {
+                console.log('Stats will be available after first scan');
+            }
+        }
+        
+        // Load recent activity
+        async function loadRecentActivity() {
+            try {
+                const activities = await getRecentActivity(5);
+                const listDiv = document.getElementById('recentActivityList');
+                
+                if (activities && activities.length > 0) {
+                    listDiv.innerHTML = activities.map(activity => `
+                        <div class="activity-item">
+                            <div class="activity-icon">${getActivityIcon(activity.type)}</div>
+                            <div class="activity-details">
+                                <p class="activity-text">${activity.description}</p>
+                                <p class="activity-time">${formatTime(activity.created_at)}</p>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    listDiv.innerHTML = '<p class="empty-state">No recent activity. Start scanning objects!</p>';
+                }
+            } catch (error) {
+                console.log('Activity history will appear after first scan');
+            }
+        }
+        
+        function getActivityIcon(type) {
+            const icons = {
+                'scan': '📸',
+                'command': '🎤',
+                'action': '⚡'
+            };
+            return icons[type] || '📌';
+        }
+        
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return Math.floor(diff / 60000) + ' minutes ago';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + ' hours ago';
+            return date.toLocaleDateString();
+        }
+        
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            const result = await logout();
+            if (result.success) {
+                window.location.href = 'index.html';
+            }
+        });
+        
+        // Load dashboard on page load
+        loadDashboard();
+    </script>
+</body>
+</html>

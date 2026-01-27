@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History - Smart Object AI</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Top Navigation -->
+    <nav class="dashboard-nav">
+        <div class="container">
+            <div class="nav-brand">
+                <h2>🤖 Smart Object AI</h2>
+            </div>
+            <div class="nav-user">
+                <span id="userName">User</span>
+                <button id="logoutBtn" class="btn-outline">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <ul class="sidebar-menu">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="scanner.html">📸 Object Scanner</a></li>
+                <li class="active"><a href="history.html">📜 History</a></li>
+                <li><a href="settings.html">⚙️ Settings</a></li>
+                <li><a href="about.html">ℹ️ About</a></li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <div class="history-container">
+                <div class="history-header">
+                    <h1>📜 Scan History</h1>
+                    <p>View all your scanned objects and voice commands</p>
+                </div>
+
+                <!-- Filters -->
+                <div class="history-filters">
+                    <input type="text" id="searchInput" placeholder="🔍 Search history..." class="search-input">
+                    <select id="filterType" class="filter-select">
+                        <option value="all">All Objects</option>
+                        <option value="light">Light Bulbs</option>
+                        <option value="ac">Air Conditioner</option>
+                        <option value="tv">TV/Projector</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <button id="clearHistoryBtn" class="btn-outline">🗑️ Clear History</button>
+                </div>
+
+                <!-- History List -->
+                <div id="historyList" class="history-grid">
+                    <!-- History items will be loaded here -->
+                    <div class="loading-state">
+                        <p>Loading history...</p>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="empty-history" style="display:none;">
+                    <div class="empty-icon">📭</div>
+                    <h3>No History Yet</h3>
+                    <p>Start scanning objects to see them here!</p>
+                    <a href="scanner.html" class="btn-primary">Scan Your First Object</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    
+    <script>
+        // Check authentication
+        checkAuth();
+        
+        // Load user and history
+        async function loadPage() {
+            const user = await getCurrentUser();
+            if (user) {
+                document.getElementById('userName').textContent = user.user_metadata?.full_name || user.email;
+                loadHistory();
+            }
+        }
+        
+        // Load scan history
+        async function loadHistory() {
+            try {
+                const history = await getScanHistory();
+                const historyList = document.getElementById('historyList');
+                const emptyState = document.getElementById('emptyState');
+                
+                if (history && history.length > 0) {
+                    historyList.innerHTML = history.map(item => `
+                        <div class="history-card">
+                            <div class="history-image">
+                                ${item.image_url ? `<img src="${item.image_url}" alt="${item.object_name}">` : '<div class="placeholder-image">📸</div>'}
+                            </div>
+                            <div class="history-content">
+                                <h3>${item.object_name || 'Unknown Object'}</h3>
+                                <p class="history-type">${item.object_type || 'General'}</p>
+                                <p class="history-date">${formatDate(item.created_at)}</p>
+                                <div class="history-commands">
+                                    <strong>Commands:</strong>
+                                    <div class="command-list">
+                                        ${item.commands ? item.commands.map(cmd => `
+                                            <div class="command-item">
+                                                <span>🎤 ${cmd.command_text}</span>
+                                                <span class="command-time">${formatTime(cmd.executed_at)}</span>
+                                            </div>
+                                        `).join('') : '<p class="no-commands">No commands yet</p>'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                    emptyState.style.display = 'none';
+                } else {
+                    historyList.innerHTML = '';
+                    emptyState.style.display = 'flex';
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+                document.getElementById('historyList').innerHTML = '<p class="error-state">Error loading history. Please try again.</p>';
+            }
+        }
+        
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const cards = document.querySelectorAll('.history-card');
+            
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+            });
+        });
+        
+        // Filter functionality
+        document.getElementById('filterType').addEventListener('change', (e) => {
+            const filterValue = e.target.value;
+            const cards = document.querySelectorAll('.history-card');
+            
+            cards.forEach(card => {
+                if (filterValue === 'all') {
+                    card.style.display = 'flex';
+                } else {
+                    const type = card.querySelector('.history-type').textContent.toLowerCase();
+                    card.style.display = type.includes(filterValue) ? 'flex' : 'none';
+                }
+            });
+        });
+        
+        // Clear history
+        document.getElementById('clearHistoryBtn').addEventListener('click', async () => {
+            if (confirm('Are you sure you want to clear all history? This cannot be undone.')) {
+                await clearAllHistory();
+                loadHistory();
+            }
+        });
+        
+        function formatDate(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        }
+        
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            const result = await logout();
+            if (result.success) {
+                window.location.href = 'index.html';
+            }
+        });
+        
+        // Load page
+        loadPage();
+    </script>
+</body>
+</html>
