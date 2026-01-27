@@ -126,5 +126,17 @@ const OBJECT_DATABASE = {
             'speed': { result: 'Speed adjusted', icon: '⚡', color: '#10b981' },
             'oscillate': { result: 'Oscillation toggled', icon: '🌀', color: '#10b981' }
         }
+    },
+    other: {
+        name: '❓ Unknown Object',
+        type: 'Other Device',
+        icon: '❓',
+        commands: ['identify', 'analyze', 'search', 'learn more'],
+        actions: {
+            'identify': { result: 'Searching database...', icon: '🔍', color: '#a855f7' },
+            'analyze': { result: 'Analyzing object...', icon: '📊', color: '#a855f7' },
+            'search': { result: 'Searching online...', icon: '🌐', color: '#a855f7' },
+            'learn': { result: 'Learning mode activated', icon: '📚', color: '#a855f7' }
+        }
     }
 };

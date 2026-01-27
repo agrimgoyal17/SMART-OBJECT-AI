@@ -282,14 +282,36 @@ async function recognizeObject() {
 
 function handleDetectionResult(className, score) {
     const detectedClass = className.toLowerCase();
-    let matchedKey = 'light'; // default
+    let matchedKey = null;
 
-    // Smart Mapping
-    if (detectedClass.includes('phone') || detectedClass.includes('cell')) matchedKey = 'phone';
-    else if (detectedClass.includes('bottle') || detectedClass.includes('cup') || detectedClass.includes('glass')) matchedKey = 'bottle';
-    else if (detectedClass.includes('tv') || detectedClass.includes('monitor') || detectedClass.includes('screen') || detectedClass.includes('laptop')) matchedKey = 'tv';
-    else if (detectedClass.includes('microwave') || detectedClass.includes('oven') || detectedClass.includes('remote') || detectedClass.includes('refrigerator')) matchedKey = 'ac';
-    else if (detectedClass.includes('mic') || detectedClass.includes('audio')) matchedKey = 'mic';
+    // Smart Mapping - बेहतर coverage के साथ
+    if (detectedClass.includes('phone') || detectedClass.includes('cell') || detectedClass.includes('mobile')) {
+        matchedKey = 'phone';
+    } 
+    else if (detectedClass.includes('bottle') || detectedClass.includes('cup') || detectedClass.includes('glass') || detectedClass.includes('jar')) {
+        matchedKey = 'bottle';
+    } 
+    else if (detectedClass.includes('tv') || detectedClass.includes('monitor') || detectedClass.includes('screen') || detectedClass.includes('laptop') || detectedClass.includes('computer')) {
+        matchedKey = 'tv';
+    } 
+    else if (detectedClass.includes('microwave') || detectedClass.includes('oven') || detectedClass.includes('remote') || detectedClass.includes('refrigerator') || detectedClass.includes('heater')) {
+        matchedKey = 'ac';
+    } 
+    else if (detectedClass.includes('mic') || detectedClass.includes('microphone') || detectedClass.includes('audio') || detectedClass.includes('speaker')) {
+        matchedKey = 'mic';
+    }
+    else if (detectedClass.includes('fan') || detectedClass.includes('ceiling')) {
+        matchedKey = 'fan';
+    }
+    else if (detectedClass.includes('light') || detectedClass.includes('bulb') || detectedClass.includes('lamp')) {
+        matchedKey = 'light';
+    }
+
+    // अगर कोई match नहीं हुआ, तो 'other' दिखाएं
+    if (!matchedKey) {
+        matchedKey = 'other';
+        console.log('⚠️ No exact match found for "' + className + '", using Other');
+    }
 
     currentObject = OBJECT_DATABASE[matchedKey];
     updateUI(currentObject, `Detected: ${className}`, Math.round(score * 100));
