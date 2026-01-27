@@ -29,13 +29,15 @@ def detect_object():
         if not image_data:
             return jsonify({"error": "No image provided"}), 400
 
+        print("📥 Received image, decoding...")
         # Decode base64 image
         encoded_data = image_data.split(',')[1]
         nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
+        print("🔍 Running YOLO detection...")
         # Run inference
-        results = model(img)
+        results = model(img, verbose=False)
         
         # Process results
         detections = []
@@ -53,13 +55,16 @@ def detect_object():
         # Sort by confidence
         detections.sort(key=lambda x: x['confidence'], reverse=True)
 
+        print(f"✅ Found {len(detections)} objects")
         return jsonify({
             "success": True,
             "predictions": detections
         })
 
     except Exception as e:
-        print(f"Server Error: {e}")
+        print(f"❌ Server Error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':

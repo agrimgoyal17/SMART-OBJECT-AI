@@ -53,36 +53,67 @@ function initializeScanner() {
 // Camera functions
 async function startCamera() {
     try {
+        // Check if browser supports getUserMedia
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Camera is not supported in this browser. Please use image upload instead.');
+            return;
+        }
+
+        console.log('🎥 Requesting camera access...');
         let stream;
+        
         try {
-            // Try back camera first
+            // Try back camera first (for mobile)
             stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' }
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
             });
         } catch (e) {
             console.warn('Back camera not found, trying any camera');
-            // Fallback to any camera
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: true
-            });
+            try {
+                // Fallback to any camera
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+            } catch (e2) {
+                console.error('No camera found:', e2);
+                alert('No camera found. Please check if a camera is connected.');
+                return;
+            }
         }
 
         const video = document.getElementById('video');
+        if (!video) {
+            console.error('Video element not found');
+            return;
+        }
+
         video.srcObject = stream;
         currentStream = stream;
 
-        // Ensure video plays
-        await video.play();
+        // Wait for video to be ready
+        video.onloadedmetadata = () => {
+            video.play().catch(err => {
+                console.error('Error playing video:', err);
+            });
+        };
 
         // Update UI
         document.getElementById('startCameraBtn').style.display = 'none';
         document.getElementById('captureBtn').style.display = 'inline-block';
+        document.getElementById('uploadBtn').style.display = 'none';
         document.getElementById('cameraPreview').style.display = 'block';
 
-        console.log('✅ Camera started');
+        console.log('✅ Camera started successfully');
     } catch (error) {
-        console.error('Camera error:', error);
-        alert('Unable to access camera. Please check permissions or use image upload instead.');
+        console.error('❌ Camera error:', error);
+        alert('Unable to access camera.\n\nReason: ' + error.message + '\n\nPlease:\n1. Check camera permissions\n2. Close other apps using the camera\n3. Try using image upload instead');
     }
 }
 
@@ -91,30 +122,43 @@ function captureImage() {
     const canvas = document.getElementById('canvas');
 
     // Check if video is ready
-    if (video.videoWidth === 0 || video.videoHeight === 0) {
-        alert('Camera not ready yet. Please wait a moment.');
+    if (!video.srcObject) {
+        alert('Camera is not ready. Please try again.');
         return;
     }
 
-    const context = canvas.getContext('2d');
-
-    // Set canvas size to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    // Draw video frame to canvas
-    context.drawImage(video, 0, 0);
-
-    // Get image data
-    capturedImageData = canvas.toDataURL('image/jpeg');
-
-    // Stop camera
-    if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+        alert('Camera not ready yet. Please wait a moment and try again.');
+        return;
     }
 
-    // Show captured image
-    showCapturedImage();
+    try {
+        const context = canvas.getContext('2d');
+
+        // Set canvas size to match video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        // Draw video frame to canvas
+        context.drawImage(video, 0, 0);
+
+        // Get image data
+        capturedImageData = canvas.toDataURL('image/jpeg', 0.9);
+
+        console.log('✅ Image captured:', canvas.width + 'x' + canvas.height);
+
+        // Stop camera
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+        }
+
+        // Show captured image
+        showCapturedImage();
+    } catch (error) {
+        console.error('❌ Error capturing image:', error);
+        alert('Error capturing image. Please try again.');
+    }
 }
 
 function handleImageUpload(event) {
@@ -156,37 +200,62 @@ async function recognizeObject() {
     const detectedImage = document.getElementById('detectedImage');
     detectedImage.src = capturedImageData;
 
+    const statusEl = document.getElementById('objectType');
     document.getElementById('objectName').textContent = 'Analyzing...';
-    document.getElementById('objectType').textContent = 'Please wait...';
+    statusEl.textContent = 'Starting...';
 
     // Strategy 1: Try Python Backend (YOLO)
     try {
+        statusEl.textContent = 'Connecting to AI Server...';
         console.log('🌐 Sending to Python backend...');
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
         const response = await fetch('http://localhost:5000/detect', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: capturedImageData })
+            body: JSON.stringify({ image: capturedImageData }),
+            signal: controller.signal
         });
+        clearTimeout(timeout);
+
+        console.log('📡 Response status:', response.status);
 
         if (response.ok) {
             const data = await response.json();
-            if (data.success && data.predictions.length > 0) {
+            console.log('📦 Response data:', data);
+
+            if (data.success && data.predictions && data.predictions.length > 0) {
                 console.log('✅ Backend prediction:', data.predictions);
+                console.log('🎯 Calling handleDetectionResult with:', data.predictions[0].class, data.predictions[0].confidence);
                 handleDetectionResult(data.predictions[0].class, data.predictions[0].confidence);
                 return;
+            } else {
+                console.warn('⚠️ No predictions in response');
             }
+        } else {
+            console.error('❌ Response not OK:', response.status);
         }
     } catch (e) {
-        console.warn('⚠️ Backend unreachable, trying local AI:', e);
+        console.warn('⚠️ Backend error:', e.message);
+        statusEl.textContent = 'Server failed, using local AI...';
     }
 
     // Strategy 2: Local TensorFlow.js
     try {
         if (objectModel) {
+            statusEl.textContent = 'Running local detection...';
             console.log('🤖 Running local TensorFlow.js...');
+
             const imgForDetection = new Image();
             imgForDetection.src = capturedImageData;
-            await new Promise(r => imgForDetection.onload = r);
+
+            // Wait for image with timeout
+            await Promise.race([
+                new Promise(r => imgForDetection.onload = r),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Image load timeout')), 3000))
+            ]);
 
             const predictions = await objectModel.detect(imgForDetection);
             if (predictions.length > 0) {
@@ -196,11 +265,14 @@ async function recognizeObject() {
             }
         }
     } catch (e) {
-        console.error('❌ Local AI error:', e);
+        console.error('❌ Local AI error:', e.message);
+        statusEl.textContent = 'Local AI failed, simulating...';
     }
 
     // Strategy 3: Fallback Simulation
     console.warn('⚠️ All detection failed, using simulation');
+    statusEl.textContent = 'Using simulation...';
+
     const objects = Object.keys(OBJECT_DATABASE);
     const randomKey = objects[Math.floor(Math.random() * objects.length)];
     const randomObj = OBJECT_DATABASE[randomKey];
